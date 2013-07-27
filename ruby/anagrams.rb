@@ -1,13 +1,13 @@
-# Anagrams 
+# Anagrams
 # Check if a string is an anagram of another string
 # Two strings are anagrams, if they can be formed from
 # the same list of chars
-# ["step", "pest"), ("stop", "spot")]
+# ['step', 'pest'), ('stop', 'spot')]
 #
 # Challenge: reverse the chars in your name and prove that
-#the resulting string is an anagram of your name
+# the resulting string is an anagram of your name
 
-require "test/unit"
+require 'test/unit'
 
 
 def anagrams_v1?(w1, w2)
@@ -29,14 +29,14 @@ end
 
 class TestAnagrams < Test::Unit::TestCase
   def test_anagram_v1
-    assert anagrams_v1?("spot", "stop")
-    assert !anagrams_v1?("spot", "spo")
-    assert anagrams_v1?("", "")
+    assert anagrams_v1?('spot', 'stop')
+    assert !anagrams_v1?('spot', 'spo')
+    assert anagrams_v1?('', '')
   end
 
   def test_anagram_v2
-    assert anagrams_v2?("step", "pest")
-    assert !anagrams_v2?("step", "")
-    assert anagrams_v2?("", "")
+    assert anagrams_v2?('step', 'pest')
+    assert !anagrams_v2?('step', '')
+    assert anagrams_v2?('', '')
   end
 end
