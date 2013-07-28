@@ -358,7 +358,7 @@ Depot::Application.configure do
       domain: "codidact.com",
       authentication: "plain",
       user_name: "borisroussev",
-      password: "ultra3up",
+      password: "secret",
       enable_starttls_auto: true
   }
 end
