@@ -1,0 +1,580 @@
+sqlite3 -line db/development.sqlite3 "select * from posts"
+
+$ rails new depot
+
+
+$ rails generate scaffold Product title:string description:text image_url:string price:decimal
+
+
+Set the precision for price.
+Update db/migrate/20130728040155_create_products.rb
+t.decimal :price, precision: 8, scale: 2
+$ rake db:create
+$ rake db:migrate
+$ rails server
+
+
+Set the number of rows in the description to 6.
+Update app/views/products/_form.html.erb
+<%= f.text_area :description, rows: 6 %>
+
+
+Play:
+Create a product
+Go to listing
+Run the tests
+$ rake test
+It works!
+
+
+Update db/seeds.rb
+http://media.pragprog.com/titles/rails4/code/rails40/depot_a/db/seeds.rb
+Note the uses of %{...} and create!()
+
+
+Populate the db
+$ rake db:seed
+
+
+Add some css magic, Sassy CSS
+Update app/assets/stylesheets/products.css.scss
+http://media.pragprog.com/titles/rails4/code/rails40/depot_a/app/assets/stylesheets/products.css.scss
+
+
+Download all images in app/assets/images
+http://media.pragprog.com/titles/rails4/code/rails40/depot_a/app/assets/images/
+
+
+In views/layouts/application.html.erb, replace the <body> tag with
+<body class='<%= controller.controller_name %>'>
+Note the use of helper methods cycle(), truncate(), strip_tags()
+
+
+Add validators app/models/product.rb
+validates :title, :description, :image_url, presence: true
+Get the rest from
+http://media.pragprog.com/titles/rails4/code/rails40/depot_b/app/models/product.rb
+
+
+$ rake test
+Failures due to failed validations.
+Update test/controllers/products_controller_test.rb
+http://media.pragprog.com/titles/rails4/code/rails40/depot_b/test/controllers/products_controller_test.rb
+
+
+Unit model tests 
+Update test/models/product_test.rb
+http://media.pragprog.com/titles/rails4/code/rails40/depot_b/test/models/product_test.rb
+
+
+Test Fixtures
+Update test/fixtures/products.yml
+http://media.pragprog.com/titles/rails4/code/rails40/depot_c/test/fixtures/products.yml
+
+
+Iteration: Creating the Catalog Listing
+$ rails generate controller Store index
+
+
+Update config/routes and point the browser to /
+root 'store#index', as: 'store'
+
+
+Update the index action in app/controllers/store_controller.rb
+@products = Product.order(:title)
+
+
+Update app/views/store/index.html.erb
+<% if notice %>
+  <p id="notice"><%= notice %></p>
+<% end %>
+<h1>Your Pragmatic Catalog</h1>
+<% @products.each do |product| %>
+  <div class="entry">
+    <%= image_tag(product.image_url) %>
+    <h3><%= product.title %></h3>
+    <%= sanitize(product.description) %>
+    <div class="price_line">
+      <span class="price"><%= number_to_currency(product.price) %></span>
+    </div>
+  </div>
+<% end %>
+
+
+Add stylesheet app/assets/stylesheets/store.css.scss
+http://media.pragprog.com/titles/rails4/code/rails40/depot_d/app/assets/stylesheets/store.css.scss
+
+
+-------------
+
+Iteration: Adding a Page Layout
+
+
+Update app/views/layouts/application.html.erb
+<html>
+<head>
+  <title>Pragprog Books Online Store</title>
+  <%= stylesheet_link_tag "application", media: "all", "data-turbolinks-track" => true %>
+  <%= javascript_include_tag "application", "data-turbolinks-track" => true %>
+  <%= csrf_meta_tags %>
+</head>
+<body class="<%= controller.controller_name %>">
+<div id="banner">
+  <%= image_tag("logo.png") %>
+  <%= @page_title || "Pragmatic Bookshelf" %>
+</div>
+<div id="columns">
+  <div id="side"> <ul>
+    <li><a href="http://www....">Home</a></li>
+    <li><a href="http://www..../faq">Questions</a></li>
+    <li><a href="http://www..../news">News</a></li>
+    <li><a href="http://www..../contact">Contact</a></li>
+  </ul>
+  </div>
+  <div id="main">
+    <%= yield %>
+  </div>
+</div>
+</body>
+</html>
+
+
+To add the application layout css:
+rename assets/stylesheets/application.css to application.css.scss
+http://media.pragprog.com/titles/rails4/code/rails40/depot_e/app/assets/stylesheets/application.css.scss
+
+-------------
+
+Iteration: Using a Helper to Format the Price
+
+
+Update app/views/store/index.html.erb
+<span class="price"><%= number_to_currency(product.price) %></span>
+
+-------------
+
+Iteration: Functional Testing of Controllers
+
+
+Update test/controllers/store_controller_test.rb
+http://media.pragprog.com/titles/rails4/code/rails40/depot_e/test/controllers/store_controller_test.rb
+$ rake test:controllers
+
+
+Notes:
+The four lines we added take a look into the HTML that is returned, using CSS selector notation:
+- selectors starting with a (#) match on id attributes.
+- selectors starting with a dot (.) match on class attributes.
+- selectors that contain no prefix at all match on element names.
+Install Firefox Firebug
+Right-click on the page & choose 'Inspect with firebug'
+Go to the CSS panel
+On the right hand side, there is a console that lets you try selectors. It will prompt you with "Try a selector....".
+Enter: #columns #side a
+
+-------------
+
+Iteration: Caching of partial results
+
+
+Update config/environments/development.rb
+config.action_controller.perform_caching = true
+
+
+Update app/models/product.rb
+def self.latest
+  Product.order(:updated_at).last
+end
+
+
+Mark the sections of our template that we need to update if any product changes, Russian Doll caching
+Update app/views/store/index.html.erb
+<% if notice %>
+  <p id="notice"><%= notice %></p>
+<% end %>
+<h1>Your Pragmatic Catalog</h1>
+<% cache ['store', Product.latest] do %>
+  <% @products.each do |product| %>
+    <% cache ['entry', product] do %>
+      <div class="entry">
+        <%= image_tag(product.image_url) %>
+        <h3><%= product.title %></h3>
+        <%= sanitize(product.description) %>
+        <div class="price_line">
+          <span class="price"><%= number_to_currency(product.price) %></span>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>
+
+
+-------------
+
+
+Iteration: Finding a Cart
+We’ll keep a cart in the database and store its unique identifier, cart.id, in the session. 
+
+
+$ rails generate scaffold Cart
+$ rake db:migrate
+
+
+Add app/controllers/concerns/current_cart.rb
+http://media.pragprog.com/titles/rails4/code/rails40/depot_f/app/controllers/concerns/current_cart.rb
+
+-------------
+
+
+Iteration: Connecting Products to Carts
+A cart contains a set of products.
+
+
+$ rails generate scaffold LineItem product:references cart:belongs_to
+$ rake db:migrate
+
+
+Check app/models/line_item.rb to see the associations
+
+
+Update app/models/cart.rb
+has_many :line_items, dependent: :destroy
+
+
+Update app/models/product.rb
+# add at the top
+has_many :line_items
+before_destroy :ensure_not_referenced_by_any_line_item
+# add at the end
+  private
+
+    # ensure that there are no line items referencing this product
+    def ensure_not_referenced_by_any_line_item
+      if line_items.empty?
+        return true
+      else
+        errors.add(:base, 'Line Items present')
+        return false
+      end
+    end
+
+
+-------------
+
+
+Iteration: Adding a Button
+
+
+Update app/views/store/index.html.erb
+<%= button_to 'Add to Cart', line_items_path(product_id: product) %>
+
+
+Update app/assets/stylesheets/store.css.scss
+p, div.price_line {
+  margin-left: 100px;
+  margin-top: 0.5em;
+  margin-bottom: 0.8em;
+  form, div {
+    display: inline;
+  }
+}
+
+
+Update app/controllers/line_items_controller.rb
+http://media.pragprog.com/titles/rails4/code/rails40/depot_f/app/controllers/line_items_controller.rb
+# Briefly, at the top
+include CurrentCart
+before_action :set_cart, only: [:create]
+# Update the create action
+product = Product.find(params[:product_id])
+@line_item = @cart.line_items.build(product: product)
+
+
+Update test/controllers/line_items_controller_test.rb
+fix => test "should create line_item" do 
+http://media.pragprog.com/titles/rails4/code/rails40/depot_g/test/controllers/line_items_controller_test.rb
+
+
+Update app/views/carts/show.html.erb
+<% if notice %>
+    <p id="notice"><%= notice %></p>
+<% end %>
+<h2>Your Pragmatic Cart</h2>
+<ul>
+  <% @cart.line_items.each do |item| %>
+      <li><%= item.product.title %></li>
+  <% end %>
+</ul>
+
+
+-------------
+
+Playtime
+
+
+Add a new variable to the session to record how many times the user has accessed the store controller’s index action. Note that the first time this page is accessed, your count won’t be in the session. You can test for this with code like this:
+if session[:counter].nil? ...
+If the session variable isn’t there, you’ll need to initialize it. Then you’ll be able to increment it.
+• Pass this counter to your template, and display it at the top of the catalog page. Hint: the pluralize helper (definition on page 365) might be useful when forming the message you display.
+• Reset the counter to zero whenever the user adds something to the cart.
+• Change the template to display the counter only if it is greater than five.
+
+-------------------
+
+
+Iteration: Sending Confirmation Emails
+
+
+Add to config/environment.rb
+Depot::Application.configure do
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = {
+      address: "smtp.gmail.com",
+      port: 587,
+      domain: "codidact.com",
+      authentication: "plain",
+      user_name: "borisroussev",
+      password: "ultra3up",
+      enable_starttls_auto: true
+  }
+end
+
+
+$ rails generate mailer OrderNotifier received shipped
+
+
+Open app/mailers/order_notifier, one action per email. Like a controller except for mail instead of render. 
+Method mail accepts :to, :cc, :from, and :subject.
+
+
+Customize app/views/order_notifier/received.text.erb
+http://media.pragprog.com/titles/rails4/code/rails40/depot_q/app/views/order_notifier/received.text.erb
+
+
+Create partial app/views/line_items/_line_item.text.erb
+<%= truncate(line_item.product.title, length: 50) %>
+
+
+Edit app/mailers/order_notifier.rb
+def received(order)
+  @order = order
+  mail to: order.email, 
+  subject: 'Pragmatic Store Order Confirmation'
+end
+
+
+Add Orders
+$ rails generate scaffold Order name address:text email pay_type
+$ rails generate migration add_order_to_line_item order:references
+
+
+http://media.pragprog.com/titles/rails4/code/rails40/depot_p/app/models/order.rb
+
+
+Edit app/models/line_item.rb
+belongs_to :order
+
+
+Generating emails when creating an order, app/controllers/orders_controller.rb
+http://media.pragprog.com/titles/rails4/code/rails40/depot_r/app/controllers/orders_controller.rb
+
+
+Add checkout button, app/views/store/index.html.erb
+<p>
+  <%= button_to "Checkout", orders_path %>
+</p>
+
+
+
+Add method add_line_items_from_cart() to app/models/order.rb
+http://media.pragprog.com/titles/rails4/code/rails40/depot_p/app/models/order.rb
+
+
+Hack the required params in app/controllers/orders_controller.rb
+def order_params
+  params[:order] = {:name => 'boris', :address => 'Mountain View',
+					:email => 'borislav@udacity.com', :pay_type => "Credit card"}
+  params.require(:order).permit(:name, :address, :email, :pay_type)
+end
+
+
+Include the cart concern in app/controllers/orders_controller.rb
+  include CurrentCart
+  before_action :set_cart, only: [:create]
+  
+
+  
+-----------
+
+Iteration: Adding Users
+
+
+$ rails generate scaffold User name:string password:digest
+$ rake db:migrate
+
+
+Add validators to app/models/user.rb
+validates :name, presence: true, uniqueness: true
+
+
+Uncomment the bcrypt-ruby gem in Gemfile
+gem 'bcrypt-ruby', '~> 3.0.0'
+$ bundle install
+
+
+ 
+Edit app/controllers/users_controller.rb
+if @user.save
+  format.html { redirect_to users_url, notice: "User #{@user.name} was successfully created." }
+
+# Do the same with update
+if @user.update(user_params) 
+  format.html { redirect_to users_url, notice: "User #{@user.name} was successfully updated." }
+
+# Also order the users returned in the index by name:
+def index
+  @users = User.order(:name)
+end
+
+
+Add a flash msg to app/views/users/index.html.erb
+<% if notice %>
+  <p id="notice"><%= notice %></p>
+<% end %>
+
+
+Spruce up a bit app/views/users/_form.html.erb
+<div class="depot_form">
+  <%= form_for @user do |f| %>
+    <% if @user.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@user.errors.count, "error") %> prohibited this user from being saved:</h2>
+      <ul>
+        <% @user.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+    <% end %>
+
+    <fieldset>
+      <legend>Enter User Details</legend>
+      <div class="field">
+        <%= f.label :name, 'Name:' %>
+        <%= f.text_field :name, size: 40 %>
+      </div>
+      <div class="field">
+        <%= f.label :password, 'Password:' %>
+        <%= f.password_field :password, size: 40 %>
+      </div>
+      <div class="field">
+        <%= f.label :password_confirmation, 'Confirm:' %>
+        <%= f.password_field :password_confirmation, size: 40 %>
+      </div>
+      <div class="actions"> <%= f.submit %></div>
+    </fieldset>
+  <% end %>
+</div>
+
+
+# Add yourself as a user
+# Check the db
+$ sqlite3 -line db/development.sqlite3 "select * from posts"
+
+
+-----------
+
+
+Iteration: Authenticating Users
+
+
+$ rails generate controller Sessions new create destroy
+$ rails generate controller Admin index
+$ rake db:migrate
+
+
+Authenticate on creating a new session app/controllers/sessions_controller.rb
+http://media.pragprog.com/titles/rails4/code/rails40/depot_r/app/controllers/sessions_controller.rb
+
+
+Using a form that is not related to a model, app/views/sessions/new.html.erb
+<div class="depot_form">
+  <% if flash[:alert] %>
+    <p id="notice"><%= flash[:alert] %></p>
+  <% end %>
+  <%= form_tag do %>
+    <fieldset>
+      <legend>Please Log In</legend>
+      <div>
+        <%= label_tag :name, 'Name:' %>
+        <%= text_field_tag :name, params[:name] %>
+      </div>
+      <div>
+        <%= label_tag :password, 'Password:' %>
+        <%= password_field_tag :password, params[:password] %>
+      </div>
+      <div>
+        <%= submit_tag "Login" %>
+      </div>
+    </fieldset>
+  <% end %>
+</div>
+
+
+Add the index page for admins, app/views/admin/index.html.erb
+<h1>Welcome</h1>
+<p>It's <%= Time.now %></p>
+<p>We have <%= pluralize(@total_orders, "order") %>.</p>
+
+
+Set up the count in app/controllers/admin_controller.rb
+@total_orders = Order.count
+
+
+Update at the very top, config/routes.rb
+  get 'admin' => 'admin#index'   
+  controller :sessions do
+    get 'login' => :new
+    post 'login' => :create
+    delete 'logout' => :destroy
+  end
+
+
+-------------
+
+
+Iteration: Limiting Access
+
+
+Protect access, whitelisting, app/controllers/application_controller.rb
+http://media.pragprog.com/titles/rails4/code/rails40/depot_r/app/controllers/application_controller.rb
+
+
+Edit app/controllers/store_controller.rb
+Edit app/controllers/sessions_controller.rb
+skip_before_action :authorize
+
+
+Edit app/controllers/carts_controller.rb
+skip_before_action :authorize, only: [:create, :update, :destroy]
+
+
+Edit app/controllers/line_items_controller.rb
+skip_before_action :authorize, only: :create
+
+
+Edit app/controllers/orders_controller.rb
+skip_before_action :authorize, only: [:new, :create]
+
+
+Add logout link, app/views/layouts/application.html.erb
+    <li>
+      <% if session[:user_id] %>
+        <%= button_to 'Logout', logout_path, method: :delete %>
+      <% end %>
+    </li>
+
+
+
+
+
